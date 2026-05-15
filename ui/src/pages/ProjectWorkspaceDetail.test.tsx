@@ -237,10 +237,10 @@ describe("ProjectWorkspaceDetail changes tab", () => {
   });
 
   it("opens the Changes tab in working-tree mode when no upstream ref is known", async () => {
+    const workspaceWithoutRef = projectWorkspace({ defaultRef: null, repoRef: null });
     mockProjectsApi.get.mockResolvedValue(project({
-      workspaces: [projectWorkspace({ defaultRef: null, repoRef: null })],
-      primaryWorkspace: projectWorkspace({ defaultRef: null, repoRef: null }),
-      codebase: null,
+      workspaces: [workspaceWithoutRef],
+      primaryWorkspace: workspaceWithoutRef,
     }));
 
     await render();
