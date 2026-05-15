@@ -1777,7 +1777,7 @@ function enrichWakeContextSnapshot(input: {
   payload: Record<string, unknown> | null;
 }) {
   const { contextSnapshot, reason, source, triggerDetail, payload } = input;
-  const issueIdFromPayload = readNonEmptyString(payload?.["issueId"]);
+  const issueIdFromPayload = readNonEmptyString(payload?.["issueId"]) ?? readNonEmptyString(payload?.["taskId"]);
   const commentIdFromPayload = readNonEmptyString(payload?.["commentId"]);
   const taskKey = deriveTaskKey(contextSnapshot, payload);
   const wakeCommentId = deriveCommentId(contextSnapshot, payload);
@@ -3419,7 +3419,7 @@ export function heartbeatService(db: Db, options: HeartbeatServiceOptions = {}) 
     previousSessionParams: Record<string, unknown> | null,
     opts?: { useProjectWorkspace?: boolean | null },
   ): Promise<ResolvedWorkspaceForRun> {
-    const issueId = readNonEmptyString(context.issueId);
+    const issueId = readNonEmptyString(context.issueId) ?? readNonEmptyString(context.taskId);
     const contextProjectId = readNonEmptyString(context.projectId);
     const contextProjectWorkspaceId = readNonEmptyString(context.projectWorkspaceId);
     const issueProjectRef = issueId
@@ -8606,11 +8606,24 @@ export function heartbeatService(db: Db, options: HeartbeatServiceOptions = {}) 
 
     let projectId = readNonEmptyString(enrichedContextSnapshot.projectId);
     if (!projectId && issueId) {
-      projectId = await db
-        .select({ projectId: issues.projectId })
-        .from(issues)
-        .where(and(eq(issues.id, issueId), eq(issues.companyId, agent.companyId)))
-        .then((rows) => rows[0]?.projectId ?? null);
+      // issuesSvc.getById resolves both UUIDs and identifiers (e.g. "ENV-13")
+      const resolvedIssue = await issuesSvc.getById(issueId);
+      if (resolvedIssue?.companyId === agent.companyId) {
+        projectId = resolvedIssue.projectId ?? null;
+        // Canonicalize context to the UUID so downstream lookups always use UUID
+        if (resolvedIssue.id !== issueId) {
+          issueId = resolvedIssue.id;
+          enrichedContextSnapshot.issueId = issueId;
+          if (readNonEmptyString(enrichedContextSnapshot.taskId)) {
+            enrichedContextSnapshot.taskId = issueId;
+          }
+        }
+      }
+    }
+    // Propagate projectId into context so resolveWorkspaceForRun can bind the
+    // project workspace even when context.projectId wasn't set by the caller.
+    if (projectId && !readNonEmptyString(enrichedContextSnapshot.projectId)) {
+      enrichedContextSnapshot.projectId = projectId;
     }
 
     const budgetBlock = await budgets.getInvocationBlock(agent.companyId, agentId, {
