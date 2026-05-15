@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, useLocation, useNavigate, useParams } from "@/lib/router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { isUuidLike, type ProjectWorkspace } from "@paperclipai/shared";
-import { ArrowLeft, Check, ExternalLink, Loader2, Sparkles } from "lucide-react";
+import { ArrowLeft, Check, ExternalLink, GitCompare, Loader2, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Tabs } from "@/components/ui/tabs";
@@ -41,9 +41,18 @@ type ProjectWorkspaceVisibility = ProjectWorkspace["visibility"];
 type ProjectWorkspaceBaseTab = "configuration";
 type ProjectWorkspacePluginTab = `plugin:${string}`;
 type ProjectWorkspaceTab = ProjectWorkspaceBaseTab | ProjectWorkspacePluginTab;
+const WORKSPACE_CHANGES_TAB = "plugin:paperclip.workspace-diff:workspace-changes-tab" as ProjectWorkspacePluginTab;
 
 function isProjectWorkspacePluginTab(value: string | null): value is ProjectWorkspacePluginTab {
   return typeof value === "string" && value.startsWith("plugin:");
+}
+
+function upstreamBaseRef(workspace: ProjectWorkspace) {
+  if (workspace.defaultRef) return workspace.defaultRef;
+  if (workspace.repoRef) {
+    return workspace.repoRef.startsWith("origin/") ? workspace.repoRef : `origin/${workspace.repoRef.replace(/^refs\/heads\//, "")}`;
+  }
+  return "origin/master";
 }
 
 const SOURCE_TYPE_OPTIONS: Array<{ value: ProjectWorkspaceSourceType; label: string; description: string }> = [
@@ -394,6 +403,14 @@ export function ProjectWorkspaceDetail() {
   };
 
   const sourceTypeDescription = SOURCE_TYPE_OPTIONS.find((option) => option.value === form.sourceType)?.description ?? null;
+  const changesVsUpstreamUrl = (() => {
+    const params = new URLSearchParams({
+      tab: WORKSPACE_CHANGES_TAB,
+      diffView: "head",
+      baseRef: upstreamBaseRef(workspace),
+    });
+    return `${projectWorkspaceUrl(project, routeWorkspaceId)}?${params.toString()}`;
+  })();
   const handleTabChange = (tab: ProjectWorkspaceTab) => {
     const workspacePath = projectWorkspaceUrl(project, routeWorkspaceId);
     if (isProjectWorkspacePluginTab(tab)) {
@@ -415,6 +432,12 @@ export function ProjectWorkspaceDetail() {
         <div className="inline-flex items-center rounded-full border border-border bg-background px-2.5 py-1 text-xs text-muted-foreground">
           {workspace.isPrimary ? "Primary workspace" : "Secondary workspace"}
         </div>
+        <Button variant="outline" size="sm" asChild>
+          <Link to={changesVsUpstreamUrl}>
+            <GitCompare className="mr-1 h-4 w-4" />
+            Changes vs upstream
+          </Link>
+        </Button>
       </div>
 
       <Tabs value={activeTab} onValueChange={(value) => handleTabChange(value as ProjectWorkspaceTab)}>

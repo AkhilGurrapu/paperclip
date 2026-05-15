@@ -21,6 +21,16 @@ type WorkspaceDiffData = WorkspaceDiffResponse;
 type WorkspacePatchDiffOptions = PatchDiffProps<undefined>["options"];
 type DiffViewMode = "working-tree" | "head";
 
+function readInitialView(): DiffViewMode {
+  if (typeof window === "undefined") return "working-tree";
+  return new URLSearchParams(window.location.search).get("diffView") === "head" ? "head" : "working-tree";
+}
+
+function readInitialBaseRef() {
+  if (typeof window === "undefined") return "";
+  return new URLSearchParams(window.location.search).get("baseRef") ?? "";
+}
+
 function buttonClass(active = false) {
   return [
     "inline-flex h-8 items-center justify-center rounded-md border px-2.5 text-xs font-medium transition-colors",
@@ -273,8 +283,8 @@ function CollapsedFilePanel({
 export function ChangesTab({ context }: PluginDetailTabProps) {
   const toast = usePluginToast();
   const [mode, setMode] = useState<DiffRenderMode>("split");
-  const [view, setView] = useState<DiffViewMode>("working-tree");
-  const [baseRef, setBaseRef] = useState("");
+  const [view, setView] = useState<DiffViewMode>(() => readInitialView());
+  const [baseRef, setBaseRef] = useState(() => readInitialBaseRef());
   const [includeUntracked, setIncludeUntracked] = useState(false);
   const [expandedFiles, setExpandedFiles] = useState<Set<string>>(() => new Set());
   const [selectedPath, setSelectedPath] = useState<string | null>(null);
