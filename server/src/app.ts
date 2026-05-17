@@ -43,6 +43,7 @@ import { pluginRoutes } from "./routes/plugins.js";
 import { adapterRoutes } from "./routes/adapters.js";
 import { pluginUiStaticRoutes } from "./routes/plugin-ui-static.js";
 import { applyUiBranding } from "./ui-branding.js";
+import { resolvePaperclipInstanceId } from "./home-paths.js";
 import { logger } from "./middleware/logger.js";
 import { DEFAULT_LOCAL_PLUGIN_DIR, pluginLoader } from "./services/plugin-loader.js";
 import { createPluginWorkerManager, type PluginWorkerManager } from "./services/plugin-worker-manager.js";
@@ -176,6 +177,7 @@ export async function createApp(
 
   const hostServicesDisposers = new Map<string, () => void>();
   const workerManager = opts.pluginWorkerManager ?? createPluginWorkerManager();
+  const instanceId = opts.instanceId ?? resolvePaperclipInstanceId();
 
   // Mount API routes
   const api = Router();
@@ -187,6 +189,7 @@ export async function createApp(
       deploymentExposure: opts.deploymentExposure,
       authReady: opts.authReady,
       companyDeletionEnabled: opts.companyDeletionEnabled,
+      instanceId,
     }),
   );
   api.use("/companies", companyRoutes(db, opts.storageService));
@@ -253,7 +256,7 @@ export async function createApp(
       toolDispatcher,
       lifecycleManager: lifecycle,
       instanceInfo: {
-        instanceId: opts.instanceId ?? "default",
+        instanceId,
         hostVersion: opts.hostVersion ?? "0.0.0",
         deploymentMode: opts.deploymentMode,
         deploymentExposure: opts.deploymentExposure,

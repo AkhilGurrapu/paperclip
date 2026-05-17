@@ -179,4 +179,29 @@ describe("GET /health", () => {
       },
     });
   });
+
+  it("includes instance id metadata when configured", async () => {
+    const db = {
+      execute: vi.fn().mockResolvedValue([{ "?column?": 1 }]),
+    } as unknown as Db;
+    const app = express();
+    app.use(
+      "/health",
+      healthRoutes(db, {
+        deploymentMode: "local_trusted",
+        deploymentExposure: "private",
+        authReady: true,
+        companyDeletionEnabled: true,
+        instanceId: "mac-mini",
+      }),
+    );
+
+    const res = await request(app).get("/health");
+
+    expect(res.status).toBe(200);
+    expect(res.body).toMatchObject({
+      status: "ok",
+      instanceId: "mac-mini",
+    });
+  });
 });

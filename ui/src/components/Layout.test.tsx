@@ -347,6 +347,40 @@ describe("Layout", () => {
     });
   });
 
+  it("removes outer padding and scrolling on the wiki route", async () => {
+    currentPathname = "/PAP/wiki";
+    mockHealthApi.get.mockResolvedValue({
+      status: "ok",
+      instanceId: "mac-mini",
+      deploymentMode: "authenticated",
+      deploymentExposure: "private",
+      version: "1.2.3",
+    });
+    const root = createRoot(container);
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+
+    await act(async () => {
+      root.render(
+        <QueryClientProvider client={queryClient}>
+          <Layout />
+        </QueryClientProvider>,
+      );
+    });
+    await flushReact();
+    await flushReact();
+
+    const main = container.querySelector("#main-content");
+    expect(main?.className).toContain("p-0");
+    expect(main?.className).toContain("overflow-hidden");
+    expect(main?.className).not.toContain("overflow-auto");
+
+    await act(async () => {
+      root.unmount();
+    });
+  });
+
   it("renders a route-scoped plugin sidebar for a matching plugin page route", async () => {
     currentPathname = "/PAP/wiki";
     mockPluginSlots.slots = [
@@ -390,6 +424,10 @@ describe("Layout", () => {
 
     expect(container.textContent).toContain("Plugin route sidebar: Wiki Sidebar");
     expect(container.querySelector("[data-plugin-slot-class='h-full w-full']")).not.toBeNull();
+    const main = container.querySelector("#main-content");
+    expect(main?.className).toContain("p-4");
+    expect(main?.className).toContain("overflow-auto");
+    expect(main?.className).not.toContain("p-0");
     expect(container.textContent).not.toContain("Main company nav");
     expect(container.textContent).not.toContain("Company settings sidebar");
     expect(container.textContent).not.toContain("Instance sidebar");

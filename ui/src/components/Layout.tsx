@@ -39,6 +39,7 @@ import {
 import { queryKeys } from "../lib/queryKeys";
 import { scheduleMainContentFocus } from "../lib/main-content-focus";
 import { cn } from "../lib/utils";
+import { isWikiTabEnabled } from "../lib/wiki-tab";
 import { NotFoundPage } from "../pages/NotFound";
 import { PluginSlotMount, resolveRouteSidebarSlot, usePluginSlots } from "../plugins/slots";
 
@@ -135,6 +136,7 @@ export function Layout() {
     },
     refetchIntervalInBackground: true,
   });
+  const isWikiRoute = isWikiTabEnabled(health) && getCompanyRouteSegment(location.pathname, companyPrefix) === "wiki";
   const keyboardShortcutsEnabled = useQuery({
     queryKey: queryKeys.instance.generalSettings,
     queryFn: () => instanceSettingsApi.getGeneral(),
@@ -428,8 +430,15 @@ export function Layout() {
               ref={mainContentRef}
               tabIndex={-1}
               className={cn(
-                "flex-1 p-4 outline-none md:p-6",
-                isMobile ? "overflow-visible pb-[calc(5rem+env(safe-area-inset-bottom))]" : "overflow-auto",
+                "flex-1 outline-none",
+                isWikiRoute ? "p-0" : "p-4 md:p-6",
+                isMobile
+                  ? isWikiRoute
+                    ? "overflow-hidden"
+                    : "overflow-visible pb-[calc(5rem+env(safe-area-inset-bottom))]"
+                  : isWikiRoute
+                    ? "overflow-hidden"
+                    : "overflow-auto",
               )}
             >
               {hasUnknownCompanyPrefix ? (
