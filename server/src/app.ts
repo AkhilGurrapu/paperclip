@@ -10,6 +10,7 @@ import { actorMiddleware } from "./middleware/auth.js";
 import { boardMutationGuard } from "./middleware/board-mutation-guard.js";
 import { privateHostnameGuard, resolvePrivateHostnameAllowSet } from "./middleware/private-hostname-guard.js";
 import { healthRoutes } from "./routes/health.js";
+import { heartbeatRoutes } from "./routes/heartbeat.js";
 import { companyRoutes } from "./routes/companies.js";
 import { companySkillRoutes } from "./routes/company-skills.js";
 import { agentRoutes } from "./routes/agents.js";
@@ -160,6 +161,7 @@ export async function createApp(
       bindHost: opts.bindHost,
     }),
   );
+  app.use("/heartbeat", heartbeatRoutes());
   app.use(
     actorMiddleware(db, {
       deploymentMode: opts.deploymentMode,
