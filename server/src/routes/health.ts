@@ -35,6 +35,7 @@ export function healthRoutes(
     deploymentExposure: DeploymentExposure;
     authReady: boolean;
     companyDeletionEnabled: boolean;
+    instanceId?: string;
   } = {
     deploymentMode: "local_trusted",
     deploymentExposure: "private",
@@ -57,7 +58,11 @@ export function healthRoutes(
       res.json(
         exposeFullDetails
           ? { status: "ok", version: serverVersion }
-          : { status: "ok", deploymentMode: opts.deploymentMode },
+          : {
+            status: "ok",
+            deploymentMode: opts.deploymentMode,
+            ...(opts.instanceId ? { instanceId: opts.instanceId } : {}),
+          },
       );
       return;
     }
@@ -123,6 +128,7 @@ export function healthRoutes(
       res.json({
         status: "ok",
         deploymentMode: opts.deploymentMode,
+        ...(opts.instanceId ? { instanceId: opts.instanceId } : {}),
         bootstrapStatus,
         bootstrapInviteActive,
         ...(devServer ? { devServer } : {}),
@@ -133,6 +139,7 @@ export function healthRoutes(
     res.json({
       status: "ok",
       version: serverVersion,
+      ...(opts.instanceId ? { instanceId: opts.instanceId } : {}),
       deploymentMode: opts.deploymentMode,
       deploymentExposure: opts.deploymentExposure,
       authReady: opts.authReady,

@@ -3,8 +3,10 @@ import { Link, Navigate, useParams } from "@/lib/router";
 import { useQuery } from "@tanstack/react-query";
 import { useCompany } from "@/context/CompanyContext";
 import { useBreadcrumbs } from "@/context/BreadcrumbContext";
+import { healthApi } from "@/api/health";
 import { pluginsApi } from "@/api/plugins";
 import { queryKeys } from "@/lib/queryKeys";
+import { isWikiTabEnabled } from "@/lib/wiki-tab";
 import {
   PluginSlotMount,
   resolveRouteSidebarSlot,
@@ -13,6 +15,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 import { NotFoundPage } from "./NotFound";
+import { WikiFrame } from "./Wiki";
 
 /**
  * Company-context plugin page. Renders a plugin's `page` slot at
@@ -50,6 +53,14 @@ export function PluginPage() {
     () => (resolvedCompanyId ? companies.find((c) => c.id === resolvedCompanyId)?.issuePrefix ?? null : null),
     [companies, resolvedCompanyId],
   );
+  const isBuiltinWikiCandidate = !pluginId && pluginRoutePath === "wiki";
+  const wikiHealthQuery = useQuery({
+    queryKey: queryKeys.health,
+    queryFn: () => healthApi.get(),
+    enabled: isBuiltinWikiCandidate,
+    retry: false,
+  });
+  const shouldRenderBuiltinWiki = isBuiltinWikiCandidate && isWikiTabEnabled(wikiHealthQuery.data);
 
   const { data: contributions } = useQuery({
     queryKey: queryKeys.plugins.uiContributions,
@@ -113,6 +124,10 @@ export function PluginPage() {
   }, [contributions, pluginRoutePath]);
 
   useEffect(() => {
+    if (shouldRenderBuiltinWiki) {
+      setBreadcrumbs([{ label: "Wiki" }]);
+      return;
+    }
     if (!pageSlot) return;
     if (routeSidebarActive) {
       setBreadcrumbs([{ label: resolveRouteSidebarPageTitle(pageSlot, pluginRouteSplat) }]);
@@ -122,7 +137,7 @@ export function PluginPage() {
       { label: "Plugins", href: "/instance/settings/plugins" },
       { label: pageSlot.pluginDisplayName },
     ]);
-  }, [pageSlot, pluginRouteSplat, setBreadcrumbs, routeSidebarActive]);
+  }, [pageSlot, pluginRouteSplat, setBreadcrumbs, routeSidebarActive, shouldRenderBuiltinWiki]);
 
   if (!resolvedCompanyId) {
     if (hasInvalidCompanyPrefix) {
@@ -133,6 +148,14 @@ export function PluginPage() {
         <p className="text-sm text-muted-foreground">Select a company to view this page.</p>
       </div>
     );
+  }
+
+  if (isBuiltinWikiCandidate && wikiHealthQuery.isLoading) {
+    return <div className="text-sm text-muted-foreground">Loading...</div>;
+  }
+
+  if (shouldRenderBuiltinWiki) {
+    return <WikiFrame />;
   }
 
   if (!contributions) {

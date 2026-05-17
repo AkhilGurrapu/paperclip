@@ -10,6 +10,10 @@ const mockPluginsApi = vi.hoisted(() => ({
   listUiContributions: vi.fn(),
 }));
 
+const mockHealthApi = vi.hoisted(() => ({
+  get: vi.fn(),
+}));
+
 const mockSetBreadcrumbs = vi.hoisted(() => vi.fn());
 const mockParams = vi.hoisted(() => ({
   companyPrefix: "PAP" as string | undefined,
@@ -20,6 +24,10 @@ const mockParams = vi.hoisted(() => ({
 
 vi.mock("@/api/plugins", () => ({
   pluginsApi: mockPluginsApi,
+}));
+
+vi.mock("@/api/health", () => ({
+  healthApi: mockHealthApi,
 }));
 
 vi.mock("@/context/BreadcrumbContext", () => ({
@@ -110,6 +118,7 @@ describe("PluginPage", () => {
     mockParams.pluginId = undefined;
     mockParams.pluginRoutePath = undefined;
     mockParams["*"] = undefined;
+    mockHealthApi.get.mockResolvedValue({ status: "ok", instanceId: "default" });
   });
 
   afterEach(() => {
@@ -130,6 +139,23 @@ describe("PluginPage", () => {
     ]);
     expect(container.textContent).toContain("Back");
     expect(container.querySelector('a[href="/PAP/dashboard"]')).not.toBeNull();
+
+    await act(async () => {
+      root.unmount();
+    });
+  });
+
+  it("renders the built-in Pustak wiki for the mac-mini wiki route", async () => {
+    mockParams.pluginRoutePath = "wiki";
+    mockHealthApi.get.mockResolvedValue({ status: "ok", instanceId: "mac-mini" });
+    mockPluginsApi.listUiContributions.mockResolvedValue([]);
+
+    const root = await renderPage(container);
+
+    expect(mockSetBreadcrumbs).toHaveBeenCalledWith([{ label: "Wiki" }]);
+    const iframe = container.querySelector("iframe");
+    expect(iframe?.getAttribute("src")).toBe("https://pustak.investsarva.com/");
+    expect(iframe?.getAttribute("sandbox")).toBe("allow-same-origin allow-scripts allow-forms allow-popups");
 
     await act(async () => {
       root.unmount();

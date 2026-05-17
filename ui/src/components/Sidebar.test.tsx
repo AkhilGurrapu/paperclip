@@ -11,6 +11,10 @@ const mockHeartbeatsApi = vi.hoisted(() => ({
   liveRunsForCompany: vi.fn(),
 }));
 
+const mockHealthApi = vi.hoisted(() => ({
+  get: vi.fn(),
+}));
+
 const mockInstanceSettingsApi = vi.hoisted(() => ({
   getExperimental: vi.fn(),
 }));
@@ -56,6 +60,10 @@ vi.mock("../context/SidebarContext", () => ({
 
 vi.mock("../api/heartbeats", () => ({
   heartbeatsApi: mockHeartbeatsApi,
+}));
+
+vi.mock("../api/health", () => ({
+  healthApi: mockHealthApi,
 }));
 
 vi.mock("../api/instanceSettings", () => ({
@@ -117,6 +125,7 @@ describe("Sidebar", () => {
     container = document.createElement("div");
     document.body.appendChild(container);
     mockHeartbeatsApi.liveRunsForCompany.mockResolvedValue([]);
+    mockHealthApi.get.mockResolvedValue({ status: "ok", instanceId: "default" });
   });
 
   afterEach(() => {
@@ -159,6 +168,31 @@ describe("Sidebar", () => {
 
     await act(async () => {
       root.unmount();
+    });
+  });
+
+  it("shows the Wiki link only for the mac-mini instance", async () => {
+    mockInstanceSettingsApi.getExperimental.mockResolvedValue({ enableIsolatedWorkspaces: false });
+    mockHealthApi.get.mockResolvedValue({ status: "ok", instanceId: "mac-mini" });
+    const root = await renderSidebar();
+    await flushReact();
+
+    const link = [...container.querySelectorAll("a")].find((anchor) => anchor.textContent === "Wiki");
+    expect(link?.getAttribute("href")).toBe("/wiki");
+
+    await act(async () => {
+      root.unmount();
+    });
+
+    container.innerHTML = "";
+    mockHealthApi.get.mockResolvedValue({ status: "ok", instanceId: "default" });
+    const hiddenRoot = await renderSidebar();
+    await flushReact();
+
+    expect(container.textContent).not.toContain("Wiki");
+
+    await act(async () => {
+      hiddenRoot.unmount();
     });
   });
 });
